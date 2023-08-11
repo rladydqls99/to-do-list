@@ -2,11 +2,12 @@ from flask import Flask, render_template, request, jsonify
 app = Flask(__name__)
 from bson.objectid import ObjectId
 
-# 파이몽고 연결하기
-from pymongo import MongoClient
-client = MongoClient('mongodb+srv://sparta:test@cluster0.nafjlwl.mongodb.net/?retryWrites=true&w=majority')
-db = client.dbsparta
+from pymongo import MongoClient 
+import certifi
 
+ca = certifi.where()
+client = MongoClient('mongodb+srv://sparta:JEix6NjqkUe2HlnI@cluster0.dx5eieg.mongodb.net/?retryWrites=true&w=majority',tlsCAFile=ca)
+db = client.dbsparta
 
 @app.route('/')
 def home():
@@ -14,26 +15,22 @@ def home():
     return render_template('login.html')
 
 @app.route('/index')
-def loginPage():
+def mainPage():
     return render_template('index.html')
-
 
 # 몽고DB에 닉네임, 이메일, 비밀번호 데이터 넣기
 @app.route("/login", methods=["POST"])
 def login():
+    userInt = 0
     id_receive = request.form['id_give']
     pw_receive = request.form['pw_give']
     nick_receive = request.form['nick_give']
-    user_list = list(db.user.find({}, {'_id': False}))
-    count = len(user_list) + 1
     
     doc = {
-        'userInt' : count,
         'nickname' : nick_receive,
         'id': id_receive,
         'pw': pw_receive,
-        
-    }
+    } 
 
     # id, 암호화된pw을 가지고 해당 유저를 찾습니다.
     result = db.user.find_one({'id': id_receive, 'pw': pw_receive, 'nickname': nick_receive})
@@ -45,11 +42,10 @@ def login():
         return jsonify({'result': 'success', 'userInt': result['userInt']})
     # 찾지 못하면
     else:
-        db.user.insert_one(doc)
-        return jsonify({'result': 'fail', 'msg': '아이디/비밀번호가 일치하지 않는다 개굴.'})
+        return jsonify({'result': 'fail', 'msg': '아이디/비밀번호가 일치하지 않습니다.'})
 
 
-# 몽고DB에 to-do-list 데이터 넣기
+#몽고DB에 to-do-list 데이터 넣기
 @app.route("/todo", methods=["POST"])
 def todo_post():
     userInt_receive = int(request.cookies.get('userInt'))
@@ -63,7 +59,7 @@ def todo_post():
         'done' : 0
     }
     db.todo.insert_one(doc)
-    return jsonify({'msg': '입력 완료 개굴!'})
+    return jsonify({'msg': '입력 완료!'})
 
 
 #투두 리스트 완료 체크할 때
@@ -86,7 +82,7 @@ def todo_cancel():
 def todo_delete():
     id_receive = request.form['id_give']
     db.todo.delete_one({'_id': ObjectId(id_receive)})
-    return jsonify({'msg': '삭제 완료 개굴'})
+    return jsonify({'msg': '삭제 완료 개굴!'})
 
 
 #userInt 가져오기
@@ -103,13 +99,11 @@ def todo_get():
     userInt_receive = int(request.cookies.get('userInt'))
     nickname_receive = db.user.find_one({'userInt': userInt_receive})['nickname']
     todoinfo = list(db.todo.find({'userInt': userInt_receive}))
+
     for i in range(len(todoinfo)):
         todoinfo[i]['_id'] = str(todoinfo[i]['_id'])
     
     return jsonify({'result': todoinfo, 'userInt': userInt_receive, 'nickname': nickname_receive })
-
-
-
 
 if __name__ == '__main__':
     app.run('0.0.0.0', port=5001, debug=True)
